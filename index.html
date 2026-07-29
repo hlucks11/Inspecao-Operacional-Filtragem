@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inspeção Operacional | Filtragem</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      max-width: 760px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: #008080;
+      color: #fff;
+      padding: 28px 32px 20px;
+    }
+
+    .card-header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .card-header p {
+      font-size: 0.85rem;
+      margin-top: 6px;
+      opacity: 0.88;
+    }
+
+    .card-body { padding: 28px 32px; }
+
+    .field { margin-bottom: 24px; }
+
+    .field label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.92rem;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    .field label .req { color: #e53e3e; margin-left: 3px; }
+
+    .field input[type="date"],
+    .field input[type="text"],
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.93rem;
+      color: #1f2937;
+      background: #fff;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: #008080;
+      box-shadow: 0 0 0 3px rgba(0,128,128,0.12);
+    }
+
+    .field textarea { resize: vertical; min-height: 88px; }
+
+    .radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 400;
+      font-size: 0.92rem;
+      cursor: pointer;
+      background: #f9fafb;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 16px;
+      transition: all 0.12s;
+      color: #374151;
+    }
+
+    .radio-group input[type="radio"] { accent-color: #008080; width: 15px; height: 15px; }
+
+    .radio-group label:has(input:checked) {
+      background: #e6f4f4;
+      border-color: #008080;
+      color: #00534f;
+      font-weight: 600;
+    }
+
+    .section {
+      margin-bottom: 28px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .section-title {
+      background: #f0fafa;
+      border-bottom: 1.5px solid #e5e7eb;
+      padding: 12px 18px;
+      font-weight: 700;
+      font-size: 0.93rem;
+      color: #00534f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title .num {
+      background: #008080;
+      color: #fff;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .likert-table { width: 100%; border-collapse: collapse; }
+
+    .likert-table th {
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #6b7280;
+      padding: 8px 4px;
+      width: 60px;
+    }
+
+    .likert-table th.q-col { text-align: left; width: auto; }
+
+    .likert-table td {
+      text-align: center;
+      padding: 9px 4px;
+      border-top: 1px solid #f3f4f6;
+      font-size: 0.88rem;
+    }
+
+    .likert-table td.q-cell {
+      text-align: left;
+      padding-left: 14px;
+      color: #374151;
+    }
+
+    .likert-table tr:hover td { background: #f9fafb; }
+
+    .likert-table input[type="radio"] {
+      accent-color: #008080;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .ok-head { color: #16a34a !important; }
+    .nok-head { color: #dc2626 !important; }
+    .na-head { color: #9ca3af !important; }
+
+    .conditional { display: none; }
+
+    .btn-submit {
+      background: #008080;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px 36px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover { background: #006666; }
+
+    .divider {
+      border: none;
+      border-top: 1.5px solid #e5e7eb;
+      margin: 28px 0;
+    }
+
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #fff;
+      padding: 13px 26px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      z-index: 9999;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+    }
+
+    @media (max-width: 560px) {
+      .card-body { padding: 20px 16px; }
+      .card-header { padding: 20px 16px 16px; }
+      .likert-table th, .likert-table td { padding: 7px 2px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <h1>Inspeção Operacional | Filtragem</h1>
+    <p>Preencha todos os campos obrigatórios e clique em Enviar para baixar o PDF e registrar a inspeção.</p>
+  </div>
+
+  <div class="card-body">
+    <form id="mainForm" novalidate>
+
+      <div class="field">
+        <label for="data">1. Data <span class="req">*</span></label>
+        <input type="date" id="data" name="data" required />
+      </div>
+
+      <div class="field">
+        <label for="colaborador">2. Colaborador <span class="req">*</span></label>
+        <input type="text" id="colaborador" name="colaborador" placeholder="Nome do colaborador" required />
+      </div>
+
+      <div class="field">
+        <label>3. Turno <span class="req">*</span></label>
+        <div class="radio-group">
+          <label><input type="radio" name="turno" value="01" required /> 01</label>
+          <label><input type="radio" name="turno" value="02" /> 02</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>4. Letra <span class="req">*</span></label>
+        <div class="radio-group">
+          <label><input type="radio" name="letra" value="A" required /> A</label>
+          <label><input type="radio" name="letra" value="B" /> B</label>
+          <label><input type="radio" name="letra" value="C" /> C</label>
+          <label><input type="radio" name="letra" value="D" /> D</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>5. Área <span class="req">*</span></label>
+        <div class="radio-group">
+          <label><input type="radio" name="area" value="4260-FL-001" required /> 4260-FL-001</label>
+          <label><input type="radio" name="area" value="5800-FL-002" /> 5800-FL-002</label>
+          <label><input type="radio" name="area" value="5800-FL-003" /> 5800-FL-003</label>
+          <label><input type="radio" name="area" value="5800-FL-004" /> 5800-FL-004</label>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div id="bloco-concentrado" class="conditional">
+        <div class="section">
+          <div class="section-title"><span class="num">6</span> Processo e Condições Operacionais | Concentrado</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="conc-proc"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">7</span> Sistema de Ar, Drenagem e Secagem | Concentrado</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="conc-ar"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">8</span> Estrutura Mecânica: Placas, Tecidos e Elos | Concentrado</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="conc-est"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">9</span> Sistema de Filtrado e Bombas Auxiliares | Concentrado</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="conc-filt"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">10</span> Sistema de Lavagem e Segurança | Concentrado</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="conc-lav"></tbody></table>
+        </div>
+      </div>
+
+      <div id="bloco-rejeito" class="conditional">
+        <div class="section">
+          <div class="section-title"><span class="num">6</span> Processo e Condições Operacionais | Rejeito</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="rej-proc"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">7</span> Sistema de Ar, Drenagem e Válvulas | Rejeito</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="rej-ar"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">8</span> Estrutura Mecânica: Placas, Tecidos e Elos | Rejeito</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="rej-est"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">9</span> Sistemas de Lavagem | Rejeito</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="rej-lav"></tbody></table>
+        </div>
+        <div class="section">
+          <div class="section-title"><span class="num">10</span> Segurança Operacional | Rejeito</div>
+          <table class="likert-table"><thead><tr><th class="q-col"></th><th class="ok-head">OK</th><th class="nok-head">NOK</th><th class="na-head">NA</th></tr></thead><tbody id="rej-seg"></tbody></table>
+        </div>
+      </div>
+
+      <div class="field" id="campo-obs" style="display:none">
+        <label for="observacoes">11. Observações</label>
+        <textarea id="observacoes" name="observacoes" placeholder="Insira sua resposta"></textarea>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-enviar" style="display:none">Enviar Inspeção (PDF + Registro)</button>
+
+    </form>
+  </div>
+</div>
+
+<div id="toast">✅ Registro baixado com sucesso!</div>
+
+<script>
+// Tenta carregar a biblioteca pdf-lib de múltiplos CDNs, em sequência,
+// caso o primeiro esteja bloqueado pela rede corporativa.
+const PDFLIB_SOURCES = [
+  'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+  'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+];
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve(src);
+    s.onerror = () => reject(new Error('Falha ao carregar ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadPdfLibWithFallback() {
+  for (const src of PDFLIB_SOURCES) {
+    try {
+      console.log('[pdf-lib] tentando carregar:', src);
+      await loadScript(src);
+      console.log('[pdf-lib] script carregado (evento onload) de:', src, '— window.PDFLib =', typeof window.PDFLib);
+      if (window.PDFLib && window.PDFLib.PDFDocument) {
+        console.log('[pdf-lib] sucesso, biblioteca funcional a partir de:', src);
+        return true;
+      } else {
+        console.warn('[pdf-lib] script carregou mas PDFLib.PDFDocument não está disponível. Conteúdo pode ter sido alterado/bloqueado pelo proxy.');
+      }
+    } catch (e) {
+      console.warn('[pdf-lib] erro de rede ao carregar', src, '-', e.message);
+    }
+  }
+  return false;
+}
+
+const pdfLibReady = loadPdfLibWithFallback();
+</script>
+<script>
+const CONCENTRADO = {
+  'conc-proc': ['Bombas de alimentação disponíveis?','Filtro atingindo pressão de fechamento (250 bar)?','Pressão de secagem dentro da faixa (6,0 a 7,0 bar)?','Pressão do vaso de secagem dentro da faixa (6,0 a 7,0 bar)?','Filtro não apresenta vazamento de polpa?','Enxágue disponível?'],
+  'conc-ar':   ['Realizada drenagem dos vasos de ar (atividade obrigatória por turno)?','Condições das válvulas de sopro – movimentação e vedação?','Condições da válvula de alimentação – movimentação e vedação?','Condições das válvulas de saída de filtrado – movimentação e vedação?'],
+  'conc-est':  ['Não apresenta placa danificada?','Não apresenta tecido danificado?','Condições de movimentação das placas – Lado Direito?','Condições de movimentação das placas – Lado Esquerdo?','Elos em boas condições (sem desgaste ou folga) – Lado Direito?','Elos em boas condições (sem desgaste ou folga) – Lado Esquerdo?'],
+  'conc-filt': ['Bombas de filtrado disponíveis (PU-52/52R)?','Bomba de lavagem de baixa pressão disponível (PU-50/50R)?','Bomba de lavagem de alta pressão disponível (PU-155/155R)?'],
+  'conc-lav':  ['Carro de lavagem disponível?','Condições operacionais dos bicos de lavagem?','Sistema de segurança operacional funcionando (emergência, sirene e giroflex)?'],
+};
+
+const REJEITO = {
+  'rej-proc': ['Bomba de alimentação disponível?','Filtro atingindo pressão de fechamento (280 bar)?','Bomba de alimentação atingindo pressão de enchimento/compactação?','Pressão de secagem dentro da faixa (1,0 a 2,0 bar)?','Pressão do vaso de secagem dentro da faixa (8,0 a 9,5 bar)?','Filtro não apresenta vazamento de polpa?','Volume da pilha de rejeito adequado (abaixo do filtro)?'],
+  'rej-ar':   ['Drenagem dos vasos de ar realizada (atividade obrigatória por turno)?','Condições das válvulas de sopro – movimentação e vedação?','Condições da válvula de alimentação – movimentação e vedação?','Condições das válvulas de saída de filtrado – movimentação e vedação?','Enxágue disponível?'],
+  'rej-est':  ['Não apresenta placa danificada?','Não apresenta tecido danificado?','Condições de movimentação das placas – Lado Direito?','Condições de movimentação das placas – Lado Esquerdo?','Elos em boas condições (sem desgaste ou folgas) – Lado Direito?','Elos em boas condições (sem desgaste ou folgas) – Lado Esquerdo?'],
+  'rej-lav':  ['Carro de lavagem disponível?','Condições operacionais dos bicos de lavagem?','Bomba de lavagem de alta pressão disponível (PU-53/54/55)?','Bomba de lavagem de baixa pressão disponível (PU-215/215R/216)?'],
+  'rej-seg':  ['Sistema de segurança funcionando (emergência, sirene e giroflex)?','Linha de vida superior do filtro em condições adequadas de uso?'],
+};
+
+const SECTION_TITLES = {
+  'conc-proc': 'Processo e Condições Operacionais',
+  'conc-ar':   'Sistema de Ar, Drenagem e Secagem',
+  'conc-est':  'Estrutura Mecânica: Placas, Tecidos e Elos',
+  'conc-filt': 'Sistema de Filtrado e Bombas Auxiliares',
+  'conc-lav':  'Sistema de Lavagem e Segurança',
+  'rej-proc':  'Processo e Condições Operacionais',
+  'rej-ar':    'Sistema de Ar, Drenagem e Válvulas',
+  'rej-est':   'Estrutura Mecânica: Placas, Tecidos e Elos',
+  'rej-lav':   'Sistemas de Lavagem',
+  'rej-seg':   'Segurança Operacional',
+};
+
+function renderRows(tbodyId, questions, prefix) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '';
+  questions.forEach((q, i) => {
+    const name = `${prefix}_q${i}`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="q-cell">${q}</td><td><input type="radio" name="${name}" value="OK" /></td><td><input type="radio" name="${name}" value="NOK" /></td><td><input type="radio" name="${name}" value="NA" /></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+Object.entries(CONCENTRADO).forEach(([id, qs]) => renderRows(id, qs, id));
+Object.entries(REJEITO).forEach(([id, qs]) => renderRows(id, qs, id));
+
+const blocoConc = document.getElementById('bloco-concentrado');
+const blocoRej  = document.getElementById('bloco-rejeito');
+const campoObs  = document.getElementById('campo-obs');
+const btnEnviar = document.getElementById('btn-enviar');
+
+document.querySelectorAll('input[name="area"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (radio.value === '4260-FL-001') {
+      blocoConc.style.display = 'block';
+      blocoRej.style.display  = 'none';
+    } else {
+      blocoConc.style.display = 'none';
+      blocoRej.style.display  = 'block';
+    }
+    campoObs.style.display  = 'block';
+    btnEnviar.style.display = 'block';
+  });
+});
+
+function collectData() {
+  const fd = new FormData(document.getElementById('mainForm'));
+  const area = fd.get('area');
+  const isConc = area === '4260-FL-001';
+  const source = isConc ? CONCENTRADO : REJEITO;
+  const sections = {};
+  const linhas = [];
+  Object.entries(source).forEach(([id, questions]) => {
+    sections[id] = {};
+    questions.forEach((q, i) => {
+      const resposta = fd.get(`${id}_q${i}`) || '';
+      sections[id][q] = resposta;
+      linhas.push({ secaoId: id, secao: SECTION_TITLES[id] || id, pergunta: q, resposta });
+    });
+  });
+  const inspectionId = `${area}_${fd.get('data')}_${fd.get('turno')}_${fd.get('letra')}_${Date.now()}`;
+  return {
+    inspectionId,
+    data: fd.get('data'),
+    colaborador: fd.get('colaborador'),
+    turno: fd.get('turno'),
+    letra: fd.get('letra'),
+    area,
+    tipo: isConc ? 'Concentrado' : 'Rejeito',
+    secoes: sections,
+    linhas,
+    observacoes: fd.get('observacoes') || '',
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function validate() {
+  const fd = new FormData(document.getElementById('mainForm'));
+  if (!fd.get('data'))        { alert('Informe a data.'); return false; }
+  if (!fd.get('colaborador')) { alert('Informe o colaborador.'); return false; }
+  if (!fd.get('turno'))       { alert('Selecione o turno.'); return false; }
+  if (!fd.get('letra'))       { alert('Selecione a letra.'); return false; }
+  if (!fd.get('area'))        { alert('Selecione a área.'); return false; }
+  return true;
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+
+// ⚠️ CONFIGURAÇÃO NECESSÁRIA: cole aqui a URL gerada pelo gatilho
+// "Quando uma solicitação HTTP for recebida" do seu fluxo no Power Automate.
+const POWER_AUTOMATE_URL = 'https://defaultc9f830b72f3f494cbe47f76f7ea235.6a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/28/workflows/02f42bbe34354e74b8a40bc036ec687c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=1mbctOeeHKqefVGfDZ3XyMb0nQfUJF6Ut4mkwPdiGmg';
+
+async function enviarParaSharePoint(data) {
+  if (!POWER_AUTOMATE_URL || POWER_AUTOMATE_URL.startsWith('COLE_AQUI')) {
+    console.warn('POWER_AUTOMATE_URL não configurada — pulando envio ao SharePoint.');
+    return { skipped: true };
+  }
+  const payload = {
+    inspectionId: data.inspectionId,
+    data: data.data,
+    colaborador: data.colaborador,
+    turno: data.turno,
+    letra: data.letra,
+    area: data.area,
+    tipo: data.tipo,
+    observacoes: data.observacoes,
+    timestamp: data.timestamp,
+    linhas: data.linhas, // [{ secaoId, secao, pergunta, resposta }, ...]
+  };
+  const resp = await fetch(POWER_AUTOMATE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(`Falha ao registrar no SharePoint (HTTP ${resp.status})`);
+  return { skipped: false };
+}
+
+document.getElementById('mainForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!validate()) return;
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true;
+  btn.textContent = 'Carregando...';
+
+  const pdfLibOk = await pdfLibReady;
+  if (!pdfLibOk || !window.PDFLib || !window.PDFLib.PDFDocument) {
+    console.error('[pdf-lib] indisponível. window.PDFLib =', window.PDFLib);
+    alert('Não foi possível carregar o componente de geração de PDF (biblioteca pdf-lib).\n\nIsso costuma acontecer quando a rede/proxy da empresa bloqueia ou altera o conteúdo de CDNs externos (jsdelivr, unpkg, cdnjs).\n\nAbra o Console do navegador (F12) para ver detalhes, verifique sua conexão com a internet ou peça ao time de TI para liberar esses domínios, e tente novamente.');
+    btn.disabled = false;
+    btn.textContent = 'Enviar Inspeção (PDF + Registro)';
+    return;
+  }
+
+  const data = collectData();
+  btn.textContent = 'Enviando...';
+  try {
+    await generatePDF(data);
+    const result = await enviarParaSharePoint(data);
+    showToast(result.skipped
+      ? '✅ PDF baixado (registro no SharePoint não configurado)'
+      : '✅ PDF baixado e registro enviado ao SharePoint!');
+  } catch (err) {
+    console.error(err);
+    alert('Houve um erro ao gerar o PDF ou registrar no SharePoint: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enviar Inspeção (PDF + Registro)';
+  }
+});
+
+async function generatePDF(data) {
+  const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+  const pdfDoc = await PDFDocument.create();
+  const font     = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const pageW = 595.28, pageH = 841.89; // A4
+  const marginX = 48, marginTop = 56, marginBottom = 48;
+  const teal = rgb(0, 0.502, 0.502);
+  const dark = rgb(0.12, 0.13, 0.15);
+  const gray = rgb(0.42, 0.45, 0.5);
+  const green = rgb(0.09, 0.64, 0.29);
+  const red   = rgb(0.86, 0.15, 0.15);
+  const lightLine = rgb(0.9, 0.91, 0.93);
+
+  let page, y;
+
+  function newPage() {
+    page = pdfDoc.addPage([pageW, pageH]);
+    page.drawRectangle({ x: 0, y: pageH - 60, width: pageW, height: 60, color: teal });
+    page.drawText('Inspeção Operacional | Filtragem', { x: marginX, y: pageH - 38, size: 14, font: fontBold, color: rgb(1,1,1) });
+    y = pageH - 60 - 28;
+    return page;
+  }
+
+  function ensureSpace(h) {
+    if (y - h < marginBottom) newPage();
+  }
+
+  function drawLabelValue(label, value) {
+    ensureSpace(16);
+    page.drawText(label, { x: marginX, y, size: 9.5, font: fontBold, color: gray });
+    page.drawText(String(value || '-'), { x: marginX + 105, y, size: 9.5, font, color: dark });
+    y -= 16;
+  }
+
+  function drawSectionTitle(title) {
+    ensureSpace(28);
+    y -= 6;
+    page.drawRectangle({ x: marginX, y: y - 4, width: pageW - marginX*2, height: 20, color: rgb(0.941,0.980,0.980) });
+    page.drawText(title, { x: marginX + 8, y: y, size: 10, font: fontBold, color: rgb(0,0.325,0.31) });
+    y -= 26;
+  }
+
+  function wrapText(text, size, f, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    words.forEach(word => {
+      const test = line ? line + ' ' + word : word;
+      if (f.widthOfTextAtSize(test, size) > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function drawQuestionRow(question, answer) {
+    const answerX = pageW - marginX - 60;
+    const maxWidth = answerX - marginX - 16;
+    const lines = wrapText(question, 9, font, maxWidth);
+    const rowH = Math.max(14, lines.length * 12 + 4);
+    ensureSpace(rowH);
+    lines.forEach((ln, i) => {
+      page.drawText(ln, { x: marginX + 4, y: y - i*12, size: 9, font, color: dark });
+    });
+    let color = gray;
+    if (answer === 'OK') color = green;
+    else if (answer === 'NOK') color = red;
+    page.drawText(answer || '-', { x: answerX, y, size: 9, font: fontBold, color });
+    page.drawLine({ start: { x: marginX, y: y - rowH + 8 }, end: { x: pageW - marginX, y: y - rowH + 8 }, thickness: 0.5, color: lightLine });
+    y -= rowH;
+  }
+
+  newPage();
+
+  drawLabelValue('Data:', data.data);
+  drawLabelValue('Colaborador:', data.colaborador);
+  drawLabelValue('Turno:', data.turno);
+  drawLabelValue('Letra:', data.letra);
+  drawLabelValue('Área:', data.area);
+  drawLabelValue('Tipo:', data.tipo);
+
+  y -= 4;
+  ensureSpace(4);
+  page.drawLine({ start: { x: marginX, y }, end: { x: pageW - marginX, y }, thickness: 1, color: teal });
+  y -= 14;
+
+  Object.entries(data.secoes).forEach(([sectionId, questions]) => {
+    drawSectionTitle(SECTION_TITLES[sectionId] || sectionId);
+    Object.entries(questions).forEach(([question, answer]) => {
+      drawQuestionRow(question, answer);
+    });
+  });
+
+  if (data.observacoes) {
+    y -= 6;
+    drawSectionTitle('Observações');
+    const lines = wrapText(data.observacoes, 9.5, font, pageW - marginX*2 - 8);
+    lines.forEach(ln => {
+      ensureSpace(14);
+      page.drawText(ln, { x: marginX + 4, y, size: 9.5, font, color: dark });
+      y -= 14;
+    });
+  }
+
+  const pages = pdfDoc.getPages();
+  pages.forEach((p, idx) => {
+    p.drawText(`Página ${idx+1} de ${pages.length}  •  Gerado em ${new Date(data.timestamp).toLocaleString('pt-BR')}`, {
+      x: marginX, y: marginBottom - 24, size: 7.5, font, color: gray,
+    });
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `inspecao_filtragem_${data.area}_${(data.data||'').replace(/-/g,'')}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Registro (PDF) baixado com sucesso!');
+}
+</script>
+</body>
+</html>
