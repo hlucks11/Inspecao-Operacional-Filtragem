@@ -487,35 +487,83 @@ function showToast(msg) {
   setTimeout(() => { toast.style.display = 'none'; }, 3000);
 }
 
-// ⚠️ CONFIGURAÇÃO NECESSÁRIA: cole aqui a URL gerada pelo gatilho
-// "Quando uma solicitação HTTP for recebida" do seu fluxo no Power Automate.
-const POWER_AUTOMATE_URL = 'https://defaultc9f830b72f3f494cbe47f76f7ea235.6a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/28/workflows/02f42bbe34354e74b8a40bc036ec687c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=1mbctOeeHKqefVGfDZ3XyMb0nQfUJF6Ut4mkwPdiGmg';
+// URL do gatilho HTTP do fluxo "Receber Inspecao Filtragem v2" (Power Automate).
+// O fluxo grava 1 linha por inspeção na lista Registros_Inspecao do GEFIL.
+const POWER_AUTOMATE_URL = 'https://defaultc9f830b72f3f494cbe47f76f7ea235.6a.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/16/workflows/b72828724dc8428c8cae621ba4c10f9e/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5Tk9Uec52cWa8HL2EeMvxLXMz74v4m8WnN6HljpM_X4';
+const FILA_ENVIO = 'inspecao_fila_envio';
 
-async function enviarParaSharePoint(data) {
-  if (!POWER_AUTOMATE_URL || POWER_AUTOMATE_URL.startsWith('COLE_AQUI')) {
-    console.warn('POWER_AUTOMATE_URL não configurada — pulando envio ao SharePoint.');
-    return { skipped: true };
-  }
-  const payload = {
-    inspectionId: data.inspectionId,
-    data: data.data,
-    colaborador: data.colaborador,
-    turno: data.turno,
-    letra: data.letra,
-    area: data.area,
-    tipo: data.tipo,
-    observacoes: data.observacoes,
-    timestamp: data.timestamp,
-    linhas: data.linhas, // [{ secaoId, secao, pergunta, resposta }, ...]
+// Monta o registro com os nomes exatos das colunas da lista Registros_Inspecao.
+function montarRegistroSP(data) {
+  const linhas = data.linhas || [];
+  const conta = r => linhas.filter(l => l.resposta === r).length;
+  const modelo = data.tipo === 'Concentrado' ? 'ME2000F' : 'GHT2500F';
+  const itensNOK = linhas
+    .filter(l => l.resposta === 'NOK')
+    .map(l => `${l.pergunta} (${l.secao})`)
+    .join('\n');
+  return {
+    Title: data.inspectionId,
+    InspectionId: data.inspectionId,
+    DataInspecao: data.data,
+    Colaborador: data.colaborador,
+    Turno: data.turno,
+    Letra: data.letra,
+    Area: data.area,
+    Tipo: data.tipo,
+    Modelo: modelo,
+    GeradoEm: data.timestamp,
+    TotalItens: linhas.length,
+    QtdOK: conta('OK'),
+    QtdNOK: conta('NOK'),
+    QtdNA: conta('NA'),
+    QtdSemResposta: linhas.filter(l => !l.resposta).length,
+    ItensNOK: itensNOK,
+    Checklist: JSON.stringify(linhas),
+    Observacoes: data.observacoes || '',
   };
-  const resp = await fetch(POWER_AUTOMATE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) throw new Error(`Falha ao registrar no SharePoint (HTTP ${resp.status})`);
-  return { skipped: false };
 }
+
+// Envia sem esperar a resposta do fluxo (text/plain + no-cors evita o preflight
+// e o travamento do navegador). Se a rede falhar, guarda na fila local e tenta
+// de novo ao reabrir ou quando a conexão voltar.
+function enviarParaSharePoint(data) {
+  const registro = montarRegistroSP(data);
+  return fetch(POWER_AUTOMATE_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(registro),
+  }).catch(() => {
+    try {
+      const fila = JSON.parse(localStorage.getItem(FILA_ENVIO) || '[]');
+      fila.push(registro);
+      localStorage.setItem(FILA_ENVIO, JSON.stringify(fila));
+    } catch (e) { /* localStorage indisponível: registro só no PDF */ }
+  });
+}
+
+// Reenvia registros que ficaram na fila (sem conexão em envios anteriores).
+function reenviarPendentes() {
+  let fila;
+  try { fila = JSON.parse(localStorage.getItem(FILA_ENVIO) || '[]'); } catch (e) { return; }
+  if (!fila.length) return;
+  localStorage.removeItem(FILA_ENVIO);
+  fila.forEach(registro => {
+    fetch(POWER_AUTOMATE_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(registro),
+    }).catch(() => {
+      try {
+        const atual = JSON.parse(localStorage.getItem(FILA_ENVIO) || '[]');
+        atual.push(registro);
+        localStorage.setItem(FILA_ENVIO, JSON.stringify(atual));
+      } catch (e) { /* ignore */ }
+    });
+  });
+}
+window.addEventListener('load', reenviarPendentes);
+window.addEventListener('online', reenviarPendentes);
 
 document.getElementById('mainForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -540,16 +588,14 @@ document.getElementById('mainForm').addEventListener('submit', async e => {
     btn.textContent = 'Enviar Inspeção (PDF + Registro)';
     return;
   }
-  btn.textContent = 'Enviando...';
+  btn.textContent = 'Gerando PDF...';
   try {
-    await generatePDF(data);
-    const result = await enviarParaSharePoint(data);
-    showToast(result.skipped
-      ? '✅ PDF baixado (registro no SharePoint não configurado)'
-      : '✅ PDF baixado e registro enviado ao SharePoint!');
+    await generatePDF(data);           // gera e baixa o PDF no aparelho
+    enviarParaSharePoint(data);        // dispara o registro e segue (não trava a tela)
+    showToast('✅ PDF baixado e inspeção registrada!');
   } catch (err) {
     console.error(err);
-    alert('Houve um erro ao gerar o PDF ou registrar no SharePoint: ' + err.message);
+    alert('Houve um erro ao gerar o PDF: ' + err.message);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Enviar Inspeção (PDF + Registro)';
